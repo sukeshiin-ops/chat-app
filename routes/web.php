@@ -1,10 +1,11 @@
 <?php
 
+use App\Events\TestMessage;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return view('auth.signIn');
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
@@ -14,6 +15,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+
+Route::get('/test-broadcast', function () {
+    broadcast(new TestMessage());
+    return "Event Fired";
+});
 
 
 require __DIR__.'/settings.php';

@@ -9,6 +9,7 @@ import { configureEcho } from '@laravel/echo-react';
 
 configureEcho({
     broadcaster: 'reverb',
+    host: window.location.hostname + ':8080',
 });
 
 declare global {

@@ -14,4 +14,30 @@ window.Echo = new Echo({
     enabledTransports: ['ws'],
 });
 
+let onlineUsers = [];
+
+window.Echo.join('online-users')
+    .here((users) => {
+        onlineUsers = users;
+        updateUserStatus();
+    })
+    .joining((user) => {
+        onlineUsers.push(user);
+        updateUserStatus();
+    })
+    .leaving((user) => {
+        onlineUsers = onlineUsers.filter(u => u.id !== user.id);
+        updateUserStatus();
+    });
+
+function updateUserStatus() {
+    $('.status-dot').removeClass('online').addClass('offline');
+
+    onlineUsers.forEach(user => {
+        $('#status-' + user.id)
+            .removeClass('offline')
+            .addClass('online');
+    });
+}   
+
 console.log("Echo Loaded 🚀");

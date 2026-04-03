@@ -3,10 +3,8 @@
 namespace App\Events;
 
 use App\Models\Message;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -22,6 +20,7 @@ class SendMessage implements ShouldBroadcast
     public $message;
     public function __construct(Message $message)
     {
+          $message->load('sender');
         $this->message = $message;
     }
 
@@ -38,21 +37,10 @@ class SendMessage implements ShouldBroadcast
         ];
     }
 
-
-
     public function broadcastAs()
     {
         return 'message.sent';
     }
-
-    // public function broadcastWith()
-    // {
-    //     return [
-    //         'message' => $this->message->message,
-    //         'sender_id' => $this->message->sender_id,
-    //     ];
-    // }
-
 
     public function broadcastWith()
     {
@@ -60,6 +48,9 @@ class SendMessage implements ShouldBroadcast
             'message' => $this->message->message,
             'sender_id' => $this->message->sender_id,
             'receiver_id' => $this->message->receiver_id,
+            'created_at' => $this->message->created_at->format('h:i A'),
+            // 'created_at' => $this->message->created_at,
+            // 'created_at' => $this->message->created_at->toIso8601String(),
             'sender' => [
                 'id' => $this->message->sender->id,
                 'name' => $this->message->sender->name,

@@ -44,4 +44,6 @@ Route::middleware('auth')->group(function () {
 
 
     Route::get('/get-messages/{id}', [ChatController::class, 'getMessages']);
+
+    Route::post('/mark-as-read/{id}', [ChatController::class, 'markAsRead']);
 });

@@ -1,6 +1,29 @@
 <?php
 use App\Models\User;
-$users = User::where('id', '!=', Auth::id())->get();
+
+use App\Models\Message;
+
+$users = User::where('id', '!=', Auth::id())
+    ->get()
+    ->map(function ($user) {
+        $lastMessage = Message::where(function ($q) use ($user) {
+            $q->where('sender_id', Auth::id())->where('receiver_id', $user->id);
+        })
+            ->orWhere(function ($q) use ($user) {
+                $q->where('sender_id', $user->id)->where('receiver_id', Auth::id());
+            })
+            ->latest()
+            ->first();
+
+        $user->last_message = $lastMessage?->message;
+        $user->last_time = $lastMessage?->created_at;
+
+        $user->unread_count = Message::where('sender_id', $user->id)->where('receiver_id', Auth::id())->whereNull('read_at')->count();
+
+        return $user;
+    })
+    ->sortByDesc('last_time')
+    ->values();
 ?>
 
 <!DOCTYPE html>
@@ -20,6 +43,25 @@ $users = User::where('id', '!=', Auth::id())->get();
             object-fit: cover;
             border-radius: 50%;
         }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            border: 2px solid white;
+        }
+
+        .online {
+            background-color: #22c55e;
+
+        }
+
+        .offline {
+            background-color: #ef4444;
+        }
     </style>
 </head>
 
@@ -36,20 +78,38 @@ $users = User::where('id', '!=', Auth::id())->get();
         <ul id="userList" class="list-unstyled mb-0" style="max-height: 85vh; overflow-y: auto;">
 
             @foreach ($users as $user)
-
                 <li class="p-2 border-bottom bg-body-tertiary userItem list-group" data-id="{{ $user->id }}"
                     data-name="{{ $user->name }}" data-img="{{ asset('storage/' . $user->profile_img) }}">
                     <a href="#!"
                         class= " d-flex justify-content-between text-decoration-none list-group-item list-group-item-action bg-info text-white ">
-                        <div class="d-flex flex-row">
-                            <img src="{{ asset('storage/' . $user->profile_img) }}" class="profile-avatar me-3">
+                        <div class="d-flex flex-row ">
+                            <div class="position-relative">
+                                <img src="{{ asset('storage/' . $user->profile_img) }}" class="profile-avatar me-3">
+                                <span class="status-dot offline" id="status-{{ $user->id }}"></span>
+                            </div>
                             <div>
-                                <p class="fw-bold mb-0"><strong style="color: white">{{ $user->name }}</strong></p>
+                                <p class="fw-bold mb-0 "><strong style="color: white">{{ $user->name }}</strong></p>
+
+                                @if ($user->unread_count > 0)
+                                    <small class="text-dark">
+                                        {{ $user->last_message }}
+                                    </small>
+                                @endif
                             </div>
                         </div>
                         <div>
-                            <small class="text-muted">Now</small><br>
-                            <span class="badge bg-success">1</span>
+
+                            <small class="text-muted">
+                                @if ($user->last_time)
+                                    {{ $user->last_time->diffForHumans() }}
+                                @endif
+                            </small>
+                            {{-- <small class="text-muted">Now</small><br> --}}
+                            {{-- <span class="user-name badge bg-danger"></span> --}}
+                            {{--
+                            @if ($user->unread_count > 0)
+                                <span class=" bg-danger">{{ $user->unread_count }}</span>
+                            @endif --}}
                         </div>
                     </a>
                 </li>
@@ -81,6 +141,7 @@ $users = User::where('id', '!=', Auth::id())->get();
                         data: {
                             search: query
                         },
+
                         success: function(data) {
 
                             let html = '';
@@ -92,27 +153,34 @@ $users = User::where('id', '!=', Auth::id())->get();
 
                                 $.each(data, function(index, user) {
                                     html += `
-                                <li class="p-2 border-bottom bg-body-tertiary">
-                                    <a href="#!" class="d-flex justify-content-between text-decoration-none list-group-item-action bg-success text-white ">
-                                        <div class="d-flex flex-row">
-                                            <img src="/storage/${user.profile_img}" class="profile-avatar me-3">
-                                            <div>
-                                                <p class="fw-bold mb-0">${user.name}</p>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <small class="text-muted">Now</small><br>
-                                            <span class="badge bg-success">1</span>
-                                        </div>
-                                    </a>
-                                </li>
-                            `;
-                                });
+                            <li class="p-2 border-bottom bg-body-tertiary userItem" data-id="${user.id}"  data-name="${user.name}"
+                            data-img="/storage/${user.profile_img}">
 
+                            <a href="#!" class="d-flex justify-content-between text-decoration-none list-group-item-action bg-info text-white">
+
+                            <div class="d-flex flex-row">
+                                <div class="position-relative">
+                                <img src="/storage/${user.profile_img}" class="profile-avatar me-3">
+                                <span class="status-dot offline" id="status-${user.id}"></span>
+                            </div>
+
+                            <div>
+                                <p class="fw-bold mb-0">${user.name}</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <small class="text-muted">Now</small>
+                        </div>
+                    </a>
+                </li>
+            `;
+                                });
                             }
 
                             $('#userList').html(html);
 
+                            updateUserStatus();
                         }
                     });
 

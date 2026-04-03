@@ -28,7 +28,7 @@ $user = User::where('id', Auth::id())->first();
 
 </style>
 
-<nav class="navbar  bg-secondary px-3 d-flex justify-content-between align-items-center" >
+<nav class="navbar  bg-secondary shadow-sm px-3 d-flex justify-content-between align-items-center"  >
 
 <!-- Left -->
 <span class="navbar-brand mb-0 h5"><strong style="color: white">💬 CHAT APP</strong></span>

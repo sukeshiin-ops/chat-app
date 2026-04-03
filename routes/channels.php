@@ -18,4 +18,11 @@ Broadcast::channel('chat-channel.{id}', function ($user, $id) {
       return false;
 });
 
+Broadcast::channel('online-users', function ($user) {
+    return [
+        'id' => $user->id,
+        'name' => $user->name,
+    ];
+});
+
 

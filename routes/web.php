@@ -16,10 +16,10 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-Route::get('/test-broadcast', function () {
-    broadcast(new TestMessage());
-    return "Event Fired";
-});
+// Route::get('/test-broadcast', function () {
+//     broadcast(new TestMessage());
+//     return "Event Fired";
+// });
 
 
 require __DIR__.'/settings.php';

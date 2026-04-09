@@ -6,7 +6,7 @@ use App\Models\Message;
 $users = User::where('id', '!=', Auth::id())
     ->get()
     ->map(function ($user) {
-        $lastMessage = Message::where(function ($q) use ($user) {
+        $lastMessage = Message::withTrashed()->where(function ($q) use ($user) {
             $q->where('sender_id', Auth::id())->where('receiver_id', $user->id);
         })
             ->orWhere(function ($q) use ($user) {
@@ -15,7 +15,8 @@ $users = User::where('id', '!=', Auth::id())
             ->latest()
             ->first();
 
-        $user->last_message = $lastMessage?->message;
+        // $user->last_message = $lastMessage?->message;
+        $user->last_message = $lastMessage ? ($lastMessage->deleted_at ? 'This message was deleted by sender' : $lastMessage->message) : null;
         $user->last_time = $lastMessage?->created_at;
 
         $user->unread_count = Message::where('sender_id', $user->id)->where('receiver_id', Auth::id())->whereNull('read_at')->count();
@@ -67,7 +68,7 @@ $users = User::where('id', '!=', Auth::id())
 
 <body>
 
-    <div class="container mt-3">
+    <div class="container mt-3 ">
 
         <!-- Search Bar (UL ke bahar) -->
         <div class="p-3 border-bottom bg-white shadow-sm">
@@ -80,21 +81,27 @@ $users = User::where('id', '!=', Auth::id())
             @foreach ($users as $user)
                 <li class="p-2 border-bottom bg-body-tertiary userItem list-group" data-id="{{ $user->id }}"
                     data-name="{{ $user->name }}" data-img="{{ asset('storage/' . $user->profile_img) }}">
-                    <a href="#!"
+                    <a href="{{ $user->name }}"
                         class= " d-flex justify-content-between text-decoration-none list-group-item list-group-item-action bg-info text-white ">
                         <div class="d-flex flex-row ">
                             <div class="position-relative">
                                 <img src="{{ asset('storage/' . $user->profile_img) }}" class="profile-avatar me-3">
                                 <span class="status-dot offline" id="status-{{ $user->id }}"></span>
-                            </div>
+                            </div>  
                             <div>
                                 <p class="fw-bold mb-0 "><strong style="color: white">{{ $user->name }}</strong></p>
-
-                                @if ($user->unread_count > 0)
-                                    <small class="text-dark">
-                                        {{ $user->last_message }}
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-dark last-msg">
+                                        <strong> {{ $user->last_message }}</strong>
                                     </small>
-                                @endif
+
+                                    @if ($user->unread_count > 0)
+                                        <span class="badge bg-danger rounded-pill">
+                                            {{ $user->unread_count }}
+                                        </span>
+                                    @endif
+
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -104,12 +111,6 @@ $users = User::where('id', '!=', Auth::id())
                                     {{ $user->last_time->diffForHumans() }}
                                 @endif
                             </small>
-                            {{-- <small class="text-muted">Now</small><br> --}}
-                            {{-- <span class="user-name badge bg-danger"></span> --}}
-                            {{--
-                            @if ($user->unread_count > 0)
-                                <span class=" bg-danger">{{ $user->unread_count }}</span>
-                            @endif --}}
                         </div>
                     </a>
                 </li>
@@ -165,7 +166,8 @@ $users = User::where('id', '!=', Auth::id())
                             </div>
 
                             <div>
-                                <p class="fw-bold mb-0">${user.name}</p>
+                              <p class="fw-bold mb-0">${user.name}</p>
+                              <strong><small class="text-dark">${user.email}</small></strong>
                             </div>
                         </div>
 

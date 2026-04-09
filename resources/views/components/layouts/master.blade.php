@@ -18,17 +18,16 @@
 
         }
 
-        /* Sidebar Scroll */
-        ul::-webkit-scrollbar {
-            width: 5px;
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
-        ul::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
+        *::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
         }
 
-        /* Hover effect */
         li:hover {
             background: #f5f5f5;
             cursor: pointer;
@@ -62,19 +61,16 @@
             color: #fff;
         }
 
-        /* Search bar hover effect */
         .input-group input:focus {
             outline: none;
             box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
             background-color: #f7f7f7;
         }
 
-        /* Smooth icon alignment */
         .input-group-text i {
             font-size: 1rem;
         }
 
-        /* Optional: sticky shadow effect */
         .sticky-top {
             z-index: 10;
         }
@@ -109,6 +105,68 @@
                 transform: scale(1);
                 opacity: 1;
             }
+        }
+
+        .message-bubble {
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .message-bubble:hover {
+            opacity: 0.8;
+        }
+
+        .deleted-msg {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .message-bubble {
+            max-width: 65%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message-bubble {
+            overflow-wrap: anywhere;
+        }
+
+        .align-items-end .message-bubble {
+            background-color: #45d279;
+            color: white;
+        }
+
+        .align-items-start .message-bubble {
+            background-color: #f1f0f0;
+            color: black;
+        }
+
+        .message-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .align-items-end {
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 65%;
+            display: inline-block;
+        }
+
+        .message-item {
+            width: 100%;
+        }
+
+        .align-items-end .message-bubble {
+            margin-left: auto;
         }
     </style>
 </head>
@@ -164,12 +222,10 @@
                 <div class="col-md-8 col-lg-9 p-0 d-flex flex-column" style="border: solid 8px rgb(255, 255, 255)">
                     <div class="p-3 border-bottom chat-header d-flex align-items-center"
                         style="background-color: #075E54;">
-                        {{-- <div class="p-3 border-bottom chat-header d-flex align-items-center d-none"
-                        style="background-color: #075E54;"> --}}
 
-                        <img src="https://mdbcdn.b-cdn.net/img/Photos/Avatars/avatar-8.webp"
-                            class="header-avatar rounded-circle me-3" width="50" height="50">
-                        <strong class="header-name text-white">Brad Pitt</strong>
+                        <img src="/storage/{{ Auth::user()->profile_img }}" class="header-avatar rounded-circle me-3"
+                            width="50" height="50">
+                        <strong class="header-name text-white">Hii, {{ Auth::user()->name }}</strong>
                     </div>
 
                     <!-- Chat Body (SCROLL) -->
@@ -183,6 +239,8 @@
 
                 </div>
 
+
+
             </div>
 
         </div>
@@ -192,13 +250,26 @@
         integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous">
     </script>
 
-
-
     <!-- jQuery (REQUIRED ) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/pusher-js"></script>
 
+
+
+    <script>
+        function getTicks(msg) {
+            if (msg.read_at) {
+                return `<i class="bi bi-check2-all text-primary"></i>`; // blue
+            } else if (msg.delivered_at) {
+                return `<i class="bi bi-check2-all text-secondary"></i>`; // double
+            } else {
+                return `<i class="bi bi-check"></i>`; // single
+            }
+        }
+
+        let onlineUsers = [];
+    </script>
 
 
     {{-- Script for Sending the Message to Controller for Store and Show sender Dashboard Message --}}
@@ -236,18 +307,35 @@
                     .then(res => res.json())
 
                     .then(data => {
+                        let isOnline = onlineUsers.includes(parseInt(data.receiver_id));
+
+                        let fakeMsg = {
+                            delivered_at: isOnline ? true : null,
+                            read_at: null
+                        };
+
+                        let myProfileImg = "{{ auth()->user()->profile_img }}";
+
 
 
                         let html = `
-                            <div class="d-flex flex-column align-items-end mb-2">
-                            <div class="d-flex align-items-center">
-                            <div class="p-2 bg-success text-white rounded">${data.message}</div>
-                            <img src="/storage/${data.sender.profile_img}" class="chat-img ms-2">
-                            </div>
-                            <small class="text-muted">${data.created_at}</small></div>`;
+                                    <div id="msg-${data.id}"
+                                    class="d-flex flex-column align-items-end mb-2 message-item" data-id="${data.id}">
 
+                                    <div class="d-flex justify-content-end w-100">
+                                    <div class="d-flex align-items-center" style="max-width: 65%;">
+                                    <div class="p-2 bg-success text-white rounded message-bubble"> ${data.message} </div>
+
+                                    <img src="/storage/${myProfileImg || 'default.png'}" class="chat-img ms-2"></div>
+                                    </div>
+
+                                    <div class="text-end small">
+                                    ${data.created_at} ${getTicks(fakeMsg)}</div></div>`;
 
                         $('#chatBox').append(html);
+                        $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
+
+
                         document.getElementById('messageInput').value = '';
 
                         let sidebarItem = $('.userItem[data-id="' + data.receiver_id +
@@ -274,6 +362,32 @@
 
 
 
+    <script>
+        let myProfileImg = "{{ auth()->user()->profile_img }}";
+        $(document).on('click', '.message-bubble', function() {
+
+            let msgId = $(this).closest('.message-item').data('id');
+
+            if (!confirm("Delete this message?")) return;
+
+            fetch('/delete-message/' + msgId, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'deleted') {
+                        $('#msg-' + msgId).html(`<div class="text-muted fst-italic">You deleted this message
+                        <img src="/storage/${myProfileImg || 'default.png'}" class="chat-img ms-2"></div>`);
+                    }
+                });
+        });
+    </script>
+
+
+
     {{-- for clicking the user list and open the dashboard for chat --}}
     <script>
         $(document).ready(function() {
@@ -295,6 +409,7 @@
             });
         });
     </script>
+
 
 
     <script>
@@ -334,36 +449,46 @@
                     .then(res => res.json())
                     .then(data => {
 
-
                         data.forEach(msg => {
 
                             let isMe = msg.sender_id == myId;
-
-
+                            
                             let time = msg.created_at;
+
                             let html = isMe ? `
-                                <div class="d-flex flex-column align-items-end mb-2">
-                                <div class="d-flex align-items-center">
-                                <div class="p-2 bg-success text-white rounded">${msg.message}</div>
-                                 <img src="/storage/${msg.sender.profile_img}" class="chat-img ms-2">
-                                </div>
-                                <small class="text-muted">${time}</small>
-                                </div>
-                                ` : `
-                                <div class="d-flex flex-column align-items-start mb-2">
-                                <div class="d-flex align-items-center">
-                                <img src="/storage/${msg.sender.profile_img}" class="chat-img me-2">
-                                <div class="p-2 bg-light rounded">${msg.message}</div>
-                                </div>
-                                <small class="text-muted ms-5">${time}</small>
-                                </div>`;
+                                <div id="msg-${msg.id}" class="d-flex flex-column align-items-end mb-2 message-item" data-id="${msg.id}">
+                                <div class="d-flex justify-content-end w-100">
+                                <div class="d-flex align-items-center" style="max-width: 65%;">
+
+                             ${
+                                msg.deleted_at
+                                ? `<div class="deleted-msg">You deleted this message</div>`
+                                : `<div class="p-2 bg-success text-white rounded message-bubble border">${msg.message}</div>`
+                                }
+
+                            <img src="/storage/${msg.sender.profile_img}" class="chat-img ms-2"></div>
+                            </div>
+                            <div class="text-end small">${msg.created_at} ${getTicks(msg)}</div>
+
+                            ` : `
+
+                            <div id="msg-${msg.id}" class="d-flex flex-column align-items-start mb-2  message-item">
+                            <div class="d-flex align-items-center" style="max-width: 65%" ;>
+                            <img src="/storage/${msg.sender.profile_img}" class="chat-img me-2">
+                            ${
+                                msg.deleted_at
+                                ? `<div class="deleted-msg">This message was deleted by sender</div>`
+                                : `<div class="p-2 bg-light rounded message-bubble "    style="pointer-events: none;">${msg.message}</div>`
+                            }
+                            </div>
+                            <small class="text-muted ms-5">${msg.created_at}</small></div>`;
 
                             $('#chatBox').append(html);
+
+                            $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
+
                         });
-
-                        $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
                     });
-
             });
 
             //REALTIME LISTENER
@@ -380,16 +505,103 @@
                 window.Echo.join(currentChannel)
                     .here((users) => {
                         console.log("Users in channel:", users);
+
+                        onlineUsers = users.map(u => parseInt(u.id));
                     })
                     .joining((user) => {
                         console.log("User joined:", user);
+                        onlineUsers.push(parseInt(user.id));
                     })
                     .leaving((user) => {
                         console.log("User left:", user);
+                        onlineUsers = onlineUsers.filter(id => id !== parseInt(user.id));
                     })
-                    .listen('.message.sent', (e) => {
 
+                    .listen('.message.status', (e) => {
+
+                        let msgId = e.id;
+
+                        let msgDiv = document.querySelector(`#msg-${msgId}`);
+
+                        if (msgDiv) {
+
+                            let tickContainer = msgDiv.querySelector('.text-end.small');
+
+                            if (tickContainer) {
+
+                                let fakeMsg = {
+                                    delivered_at: e.delivered_at,
+                                    read_at: e.read_at
+                                };
+
+                                let time = tickContainer.innerText.replace(/✓.*/, '').trim();
+                                tickContainer.innerHTML = time + " " + getTicks(fakeMsg);
+                            }
+                        }
+                    })
+
+                    .listen('.message.deleted', (e) => {
+
+                        console.log("DELETE EVENT RECEIVED:", e);
+
+                        let msgDiv = document.getElementById(`msg-${e.id}`);
+
+                        //  only update chat if exists (NO RETURN)
+                        if (msgDiv) {
+                            let bubble = msgDiv.querySelector('.message-bubble, .bg-light');
+
+                            if (bubble) {
+                                bubble.outerHTML =
+                                    `
+                                <div class="text-muted fst-italic deleted-msg">This message was deleted by sender</div>`;
+                            }
+                        }
+
+                        //  ALWAYS update sidebar
+                        let userId = (e.sender_id == myId) ? e.receiver_id : e.sender_id;
+
+                        let sidebarItem = $('.userItem[data-id="' + userId + '"]');
+
+                        if (sidebarItem.length && e.is_last_message) {
+
+                            let text = (e.sender_id == myId) ?
+                                'You deleted this message' :
+                                'This message was deleted by sender';
+
+                            sidebarItem.find('.last-msg').text(text);
+
+                            sidebarItem.find('.text-muted').text('Now');
+
+                            $('#userList').prepend(sidebarItem);
+                        }
+
+                    })
+
+                    .listen('.message.sent', (e) => {
                         console.log("Realtime:", e);
+
+                        let senderId = e.sender_id;
+
+                        //  delivered
+                        fetch('/mark-as-delivered/' + senderId, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                            }
+                        });
+
+                        //  agar chat open hai
+                        if (parseInt($('#receiver_id').val()) === parseInt(senderId)) {
+
+                            // mark read
+                            fetch('/mark-as-read/' + senderId, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                                }
+                            });
+
+                        }
 
                         let sidebarItem = $('.userItem[data-id="' + e.sender_id + '"]');
 
@@ -436,7 +648,7 @@
                             });
 
                             let html = `
-                                <div class="d-flex flex-column align-items-start mb-2">
+                              <div id="msg-${e.id}" class="d-flex flex-column align-items-start mb-2 message-item">
                                 <div class="d-flex align-items-center">
                                 <img src="/storage/${e.sender.profile_img || 'default.png'}" class="chat-img me-2">
                                 <div class="p-2 bg-light rounded">${e.message}</div>
@@ -456,12 +668,10 @@
 
     <script>
         $(document).ready(function() {
-
             let myId = {{ auth()->id() }};
 
         });
     </script>
-
 
 </body>
 

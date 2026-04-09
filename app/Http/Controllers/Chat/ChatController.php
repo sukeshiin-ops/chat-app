@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Chat;
 
+use App\Events\MessageDeleted;
+use App\Events\MessageStatusUpdated;
 use App\Events\SendMessage;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
@@ -23,19 +25,13 @@ class ChatController extends Controller
 
         broadcast(new SendMessage($message));
 
-        // return response()->json([
-        //     'message' => $message->message,
-        //     'sender' => $message->sender,
-        //     'receiver_id' => $message->receiver_id,
-        //     'created_at' => $message->created_at->format('h:i A')
-        // ]);
-
         return response()->json([
             'message' => $message->message,
             'sender_id' => $message->sender_id,
             'receiver_id' => $message->receiver_id,
-            // 'created_at' => $message->created_at->toIso8601String(),
-            //    'created_at' => $message->created_at,
+            'id' => $message->id,
+            'delivered_at' => $message->delivered_at,
+            'read_at' => $message->read_at,
             'created_at' => $message->created_at->format('h:i A'),
             'sender' => [
                 'id' => $message->sender->id,
@@ -50,10 +46,11 @@ class ChatController extends Controller
 
     public function getMessages($id)
     {
-        $messages = Message::with(['sender', 'receiver'])->where(function ($q) use ($id) {
-            $q->where('sender_id', Auth::id())
-                ->where('receiver_id', $id);
-        })
+        $messages = Message::withTrashed()
+            ->with(['sender', 'receiver'])->where(function ($q) use ($id) {
+                $q->where('sender_id', Auth::id())
+                    ->where('receiver_id', $id);
+            })
             ->orWhere(function ($q) use ($id) {
                 $q->where('sender_id', $id)
                     ->where('receiver_id', Auth::id());
@@ -66,9 +63,11 @@ class ChatController extends Controller
                 return [
                     'message' => $msg->message,
                     'sender_id' => $msg->sender_id,
+                    'deleted_at' => $msg->deleted_at,
                     'receiver_id' => $msg->receiver_id,
-                    // 'created_at' => $msg->created_at,
-                    // 'created_at' => $msg->created_at->toIso8601String(),
+                    'id' => $msg->id,
+                    'delivered_at' => $msg->delivered_at,
+                    'read_at' => $msg->read_at,
                     'created_at' => $msg->created_at->format('h:i A'),
                     'sender' => [
                         'id' => $msg->sender->id,
@@ -85,11 +84,54 @@ class ChatController extends Controller
 
     public function markAsRead($id)
     {
-        Message::where('sender_id', $id)
+        $messages = Message::where('sender_id', $id)
             ->where('receiver_id', Auth::id())
             ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+            ->get();
+
+        foreach ($messages as $msg) {
+            $msg->update(['read_at' => now()]);
+
+            broadcast(new MessageStatusUpdated($msg));
+        }
 
         return response()->json(['status' => 'ok']);
+    }
+
+
+    public function markAsDelivered($senderId)
+    {
+        $messages = Message::where('sender_id', $senderId)
+            ->where('receiver_id', Auth::id())
+            ->whereNull('delivered_at')
+            ->get();
+
+        foreach ($messages as $msg) {
+            $msg->update(['delivered_at' => now()]);
+
+            broadcast(new MessageStatusUpdated($msg));
+        }
+
+        return response()->json(['status' => 'delivered']);
+    }
+
+
+    public function deleteMessage($id)
+    {
+        $message = Message::findOrFail($id);
+
+        //  Only sender can delete
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $message->delete(); // soft delete
+
+        broadcast(new MessageDeleted($message))->toOthers();
+
+        return response()->json([
+            'status' => 'deleted',
+            'id' => $message->id
+        ]);
     }
 }

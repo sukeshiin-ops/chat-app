@@ -38,6 +38,6 @@ function updateUserStatus() {
             .removeClass('offline')
             .addClass('online');
     });
-}   
+}
 
-console.log("Echo Loaded 🚀");
+console.log("Echo Loaded....... ");

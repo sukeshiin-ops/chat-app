@@ -39,10 +39,7 @@ $user = User::where('id', Auth::id())->first();
         id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
 
         <img src="{{ asset('storage/' . Auth::user()->profile_img) }}" class="profile-avatar me-3">
-
-        {{-- <img src="{{ asset('storage/' . $user->profile_img) }}" width="50" height="50"
-                class="rounded-circle me-2 border border-2 border-primary"> --}}
-
+        
         <span class="d-none d-md-inline"><strong>{{ Auth::user()->name }}</strong></span>
     </a>
 

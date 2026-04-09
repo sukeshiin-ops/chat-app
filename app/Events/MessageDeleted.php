@@ -56,7 +56,7 @@ public function broadcastWith()
             'receiver_id' => $this->message->receiver_id,
             'message' => $this->message->message,
 
-            // 🔥 CRITICAL FIX
+            //  CRITICAL FIX
             'is_last_message' => $lastMessage && $lastMessage->id == $this->message->id,
         ];
     }

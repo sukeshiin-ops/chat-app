@@ -6,9 +6,10 @@ use App\Models\Message;
 $users = User::where('id', '!=', Auth::id())
     ->get()
     ->map(function ($user) {
-        $lastMessage = Message::withTrashed()->where(function ($q) use ($user) {
-            $q->where('sender_id', Auth::id())->where('receiver_id', $user->id);
-        })
+        $lastMessage = Message::withTrashed()
+            ->where(function ($q) use ($user) {
+                $q->where('sender_id', Auth::id())->where('receiver_id', $user->id);
+            })
             ->orWhere(function ($q) use ($user) {
                 $q->where('sender_id', $user->id)->where('receiver_id', Auth::id());
             })
@@ -63,6 +64,14 @@ $users = User::where('id', '!=', Auth::id())
         .offline {
             background-color: #ef4444;
         }
+
+        .last-msg {
+            max-width: 120px;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 
@@ -87,14 +96,13 @@ $users = User::where('id', '!=', Auth::id())
                             <div class="position-relative">
                                 <img src="{{ asset('storage/' . $user->profile_img) }}" class="profile-avatar me-3">
                                 <span class="status-dot offline" id="status-{{ $user->id }}"></span>
-                            </div>  
+                            </div>
                             <div>
                                 <p class="fw-bold mb-0 "><strong style="color: white">{{ $user->name }}</strong></p>
                                 <div class="d-flex align-items-center gap-2">
                                     <small class="text-dark last-msg">
                                         <strong> {{ $user->last_message }}</strong>
                                     </small>
-
                                     @if ($user->unread_count > 0)
                                         <span class="badge bg-danger rounded-pill">
                                             {{ $user->unread_count }}

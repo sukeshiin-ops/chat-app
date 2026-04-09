@@ -452,7 +452,7 @@
                         data.forEach(msg => {
 
                             let isMe = msg.sender_id == myId;
-                            
+
                             let time = msg.created_at;
 
                             let html = isMe ? `
@@ -473,12 +473,12 @@
                             ` : `
 
                             <div id="msg-${msg.id}" class="d-flex flex-column align-items-start mb-2  message-item">
-                            <div class="d-flex align-items-center" style="max-width: 65%" ;>
+                            <div class="d-flex align-items-center" style="max-width: 45%" ;>
                             <img src="/storage/${msg.sender.profile_img}" class="chat-img me-2">
                             ${
                                 msg.deleted_at
                                 ? `<div class="deleted-msg">This message was deleted by sender</div>`
-                                : `<div class="p-2 bg-light rounded message-bubble "    style="pointer-events: none;">${msg.message}</div>`
+                                : `<div class="p-2 bg-light rounded message-bubble" style="pointer-events: none;">${msg.message}</div>`
                             }
                             </div>
                             <small class="text-muted ms-5">${msg.created_at}</small></div>`;
@@ -651,7 +651,10 @@
                               <div id="msg-${e.id}" class="d-flex flex-column align-items-start mb-2 message-item">
                                 <div class="d-flex align-items-center">
                                 <img src="/storage/${e.sender.profile_img || 'default.png'}" class="chat-img me-2">
-                                <div class="p-2 bg-light rounded">${e.message}</div>
+                              <div class="p-2 bg-light rounded message-bubble"
+                                style="max-width:45%; pointer-events:none; word-break:break-word;">
+                                ${e.message}
+                                </div>
                                 </div>
                                 <small class="text-muted ms-5">${e.created_at || 'Now'}</small>
                                 </div>`;

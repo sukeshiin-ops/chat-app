@@ -5,7 +5,6 @@ namespace App\Events;
 use App\Models\Message;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -15,14 +14,14 @@ class SendMessage implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * Create a new event instance. 
+     * Create a new event instance.
      */
 
     public $message;
     public function __construct(Message $message)
     {
         $message->load('sender');
-        $this->message = $message;
+        $this->message = $message; 
     }
 
     /**

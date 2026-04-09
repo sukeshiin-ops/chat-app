@@ -63,7 +63,7 @@
 
 <form id="chatForm">
     @csrf
-    <div class="chat-input-box">
+    <div class="chat-input-box border border-dark border-3">
 
         <input type="text" name="message" id="messageInput" class="chat-input" placeholder="Type a message..."
             autocomplete="off">

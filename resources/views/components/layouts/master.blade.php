@@ -130,7 +130,7 @@
             word-wrap: break-word;
             word-break: break-word;
             overflow-wrap: break-word;
-            white-space: pre-wrap;
+            white-space: normal;
         }
 
         .message-bubble {
@@ -324,7 +324,7 @@
 
                                     <div class="d-flex justify-content-end w-100">
                                     <div class="d-flex align-items-center" style="max-width: 65%;">
-                                    <div class="p-2 bg-success text-white rounded message-bubble"> ${data.message} </div>
+                                    <div class="p-2 bg-success text-white rounded message-bubble"> ${cleanMessage(data.message)}</div>
 
                                     <img src="/storage/${myProfileImg || 'default.png'}" class="chat-img ms-2"></div>
                                     </div>
@@ -410,7 +410,13 @@
         });
     </script>
 
-
+    <script>
+        function cleanMessage(msg) {
+            return msg
+                .replace(/^[\s\r\n]+/, '')
+                .replace(/[\s\r\n]+$/, '');
+        }
+    </script>
 
     <script>
         $(document).ready(function() {
@@ -473,7 +479,7 @@
                             ` : `
 
                             <div id="msg-${msg.id}" class="d-flex flex-column align-items-start mb-2  message-item">
-                            <div class="d-flex align-items-center" style="max-width: 45%" ;>
+                            <div class="d-flex align-items-center" style="max-width: 55%" ;>
                             <img src="/storage/${msg.sender.profile_img}" class="chat-img me-2">
                             ${
                                 msg.deleted_at
@@ -582,7 +588,7 @@
 
                         let senderId = e.sender_id;
 
-                        //  delivered
+                        // delivered
                         fetch('/mark-as-delivered/' + senderId, {
                             method: 'POST',
                             headers: {
@@ -590,16 +596,16 @@
                             }
                         });
 
-                        //  agar chat open hai
+                        // agar chat open hai
                         if (parseInt($('#receiver_id').val()) === parseInt(senderId)) {
 
-                            // mark read
-                            fetch('/mark-as-read/' + senderId, {
+                        // mark read
+                        fetch('/mark-as-read/' + senderId, {
                                 method: 'POST',
                                 headers: {
                                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
                                 }
-                            });
+                        });
 
                         }
 
@@ -633,7 +639,8 @@
                                             <span class="badge rounded-pill bg-danger ms-2 px-3 py-1
                                             d-inline-flex align-items-center justify-content-center gap-1 shadow-sm badge-animate">
                                             <i class="bi bi-chat-dots-fill" style="font-size:16px;"></i>
-                                            <span class="count fw-bold">1</span></span>`);
+                                            <span class="count fw-bold">1</span></span>`
+                                    );
                                 }
                             }
                         }
@@ -652,8 +659,8 @@
                                 <div class="d-flex align-items-center">
                                 <img src="/storage/${e.sender.profile_img || 'default.png'}" class="chat-img me-2">
                               <div class="p-2 bg-light rounded message-bubble"
-                                style="max-width:45%; pointer-events:none; word-break:break-word;">
-                                ${e.message}
+                                style="max-width:55%; pointer-events:none; word-break:break-word;">
+                            ${cleanMessage(e.message)}
                                 </div>
                                 </div>
                                 <small class="text-muted ms-5">${e.created_at || 'Now'}</small>

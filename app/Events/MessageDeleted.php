@@ -25,27 +25,25 @@ class MessageDeleted implements ShouldBroadcastNow
     {
         return [
             new PresenceChannel('chat-channel.' . $this->message->receiver_id),
-             new PresenceChannel('chat-channel.' . $this->message->sender_id),
+            new PresenceChannel('chat-channel.' . $this->message->sender_id),
         ];
     }
-
 
     public function broadcastAs()
     {
         return 'message.deleted';
     }
 
-public function broadcastWith()
+    public function broadcastWith()
     {
-        //  get LAST message INCLUDING deleted ones
         $lastMessage = Message::withTrashed()
             ->where(function ($q) {
                 $q->where('sender_id', $this->message->sender_id)
-                  ->where('receiver_id', $this->message->receiver_id);
+                    ->where('receiver_id', $this->message->receiver_id);
             })
             ->orWhere(function ($q) {
                 $q->where('sender_id', $this->message->receiver_id)
-                  ->where('receiver_id', $this->message->sender_id);
+                    ->where('receiver_id', $this->message->sender_id);
             })
             ->latest()
             ->first();

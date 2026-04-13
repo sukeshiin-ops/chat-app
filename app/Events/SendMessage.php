@@ -21,7 +21,7 @@ class SendMessage implements ShouldBroadcastNow
     public function __construct(Message $message)
     {
         $message->load('sender');
-        $this->message = $message; 
+        $this->message = $message;
     }
 
     /**
@@ -52,6 +52,7 @@ class SendMessage implements ShouldBroadcastNow
             'created_at' => $this->message->created_at->format('h:i A'),
             'delivered_at' => $this->message->delivered_at,
             'read_at' => $this->message->read_at,
+            
             'sender' => [
                 'id' => $this->message->sender->id,
                 'name' => $this->message->sender->name,

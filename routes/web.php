@@ -16,12 +16,8 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-// Route::get('/test-broadcast', function () {
-//     broadcast(new TestMessage());
-//     return "Event Fired";
-// });
-
-
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__. '../chat/chat.php';
+require __DIR__. '../chat/chat.php';
+

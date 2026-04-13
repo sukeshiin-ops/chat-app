@@ -9,13 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(NotAccessIfLogin::class)->group(function () {
+
     Route::view('signin', 'auth.signIn')->name('sign-in.page');
     Route::view('signup', 'auth.signUp')->name('sign-up.page');
-    Route::post('register', [AuthController::class, 'register'])->name('user.register');
-    Route::post('login', [AuthController::class, 'login'])->name('user.login');
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('user.register');
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('user.login');
     Route::get('logout', [AuthController::class, 'logout'])->name('logout.user');
-});
+
 
 Route::middleware('auth')->group(function () {
     Route::view('chat-app', 'components.layouts.master')->name('chat.home.page');

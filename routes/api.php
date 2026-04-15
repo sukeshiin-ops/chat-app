@@ -19,7 +19,13 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->post('user-changepassword', [AuthController::class, 'changePassword']);
     Route::post('user-forgotPassword', [AuthController::class, 'forgotPassword']);
     Route::post('user-verifyotp', [AuthController::class, 'verifyOtp']);
-    Route::post('user-getuser', [AuthController::class, 'getUserList']);
+    Route::post('user-getuser', [AuthController::class, 'getUserList'])->middleware('auth:sanctum');
 
-     Route::post('user-allmessage', [AuthController::class, 'messageFetch']);
+    Route::post('user-allmessage', [AuthController::class, 'messageFetch'])->middleware('auth:sanctum');
+
+
+
+    Route::middleware('auth:sanctum')->get('/check-user', function (Request $request) {
+        return $request->user();
+    });
 });

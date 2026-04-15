@@ -1,0 +1,28 @@
+******************************************************
+🚀 Full Flow (1 Line समझ ले)
+Controller → event() → Event Class → broadcastOn() → channels.php → Echo.listen()
+
+
+
+*************************************************
+🔥 क्या Controller पहले बनता है?
+
+👉 हाँ, normally flow यही होता है:
+
+User Action → Controller → Event → Broadcast → Echo (Frontend)
+
+मतलब:
+
+User message भेजता है
+Controller में request आती है
+Controller event fire करता है
+Event broadcast होता है
+Frontend (Echo) receive करता है
+
+
+
+*************************************************
+🔥 ये लाइन क्या करती है? present in Every Controller
+broadcast(new SendMessage($message))->toOthers();
+
+👉 हाँ, यही line event को broadcast करती है और data भेजती है।

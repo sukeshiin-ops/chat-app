@@ -24,6 +24,8 @@ class MessageFetchRequest extends FormRequest
     {
         return [
             'email' => 'required|email',
+            'receiver_id' => 'required|exists:users,id'
+
         ];
     }
 }

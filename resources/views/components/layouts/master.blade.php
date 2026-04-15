@@ -18,6 +18,11 @@
 
         }
 
+        #chatBox {
+            height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+
         * {
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -147,6 +152,15 @@
             color: black;
         }
 
+        .message-bubble img {
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .message-bubble img:hover {
+            transform: scale(1.03);
+        }
+
         .message-item {
             display: flex;
             flex-direction: column;
@@ -239,8 +253,6 @@
 
                 </div>
 
-
-
             </div>
 
         </div>
@@ -256,7 +268,6 @@
     <script src="https://cdn.jsdelivr.net/npm/pusher-js"></script>
 
 
-
     <script>
         function getTicks(msg) {
             if (msg.read_at) {
@@ -267,6 +278,10 @@
                 return `<i class="bi bi-check"></i>`; // single
             }
         }
+        let page = 1;
+        let loading = false;
+        let hasMore = true;
+        let receiverId = null;
 
         let onlineUsers = [];
     </script>
@@ -288,25 +303,40 @@
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                console.log("Form Submit Triggered ");
 
-                let message = document.getElementById('messageInput').value;
+                let message = document.getElementById('messageInput').value.trim();
                 let receiver_id = document.getElementById('receiver_id').value;
+                let fileInput = document.getElementById('fileInput');
+                if (message === "" && fileInput.files.length === 0) {
+                    alert("Message or file required");
+                    return;
+                }
+                console.log("Form Submit Triggered ");
+                if (!message && !fileInput.files[0]) {
+                    alert("Message or file required");
+                    return;
+                }
+                let formData = new FormData();
+
+                formData.append('message', message);
+                formData.append('receiver_id', receiver_id);
+
+
+
+                if (fileInput.files[0]) {
+                    formData.append('file', fileInput.files[0]);
+                }
 
                 fetch('/send-message', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
                         },
-                        body: JSON.stringify({
-                            message: message,
-                            receiver_id: receiver_id
-                        })
+                        body: formData
                     })
                     .then(res => res.json())
-
                     .then(data => {
+
                         let isOnline = onlineUsers.includes(parseInt(data.receiver_id));
 
                         let fakeMsg = {
@@ -316,35 +346,73 @@
 
                         let myProfileImg = "{{ auth()->user()->profile_img }}";
 
+                        let content = '';
+
+                        // TEXT
+                        if (data.message) {
+                            content += `<div>${cleanMessage(data.message)}</div>`;
+                        }
+
+                        // IMAGE
+                        if (data.type === 'image') {
+                            content += `<img src="/storage/${data.file}" width="150">`;
+                        }
+
+                        // FILE
+                        if (data.type === 'file') {
+                            content += `
+                                <a href="/storage/${data.file}" download class="btn btn-sm btn-light mt-1">
+                                <i class="bi bi-download"></i> Download File</a>`;
+                        }
+
+                        if (data.type === 'video') {
+                            content += `
+                                <video width="200" controls>
+                                <source src="/storage/${data.file}"></video>`;
+                        }
 
 
                         let html = `
-                                    <div id="msg-${data.id}"
-                                    class="d-flex flex-column align-items-end mb-2 message-item" data-id="${data.id}">
+                            <div id="msg-${data.id}"
+                            class="d-flex flex-column align-items-end mb-2 message-item" data-id="${data.id}">
 
-                                    <div class="d-flex justify-content-end w-100">
-                                    <div class="d-flex align-items-center" style="max-width: 65%;">
-                                    <div class="p-2 bg-success text-white rounded message-bubble"> ${cleanMessage(data.message)}</div>
+                            <div class="d-flex justify-content-end w-100">
+                            <div class="d-flex align-items-center" style="max-width: 65%;">
+                            <div class="p-2 bg-success text-white rounded message-bubble">${content}</div>
 
-                                    <img src="/storage/${myProfileImg || 'default.png'}" class="chat-img ms-2"></div>
-                                    </div>
+                            <img src="/storage/${myProfileImg || 'default.png'}" class="chat-img ms-2">
+                            </div>
+                            </div>
+                        <div class="text-end small">
+                        ${data.created_at} ${getTicks(fakeMsg)}</div></div>`;
 
-                                    <div class="text-end small">
-                                    ${data.created_at} ${getTicks(fakeMsg)}</div></div>`;
 
                         $('#chatBox').append(html);
                         $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
 
 
                         document.getElementById('messageInput').value = '';
+                        document.getElementById(
+                            'fileInput').value = '';
+                        document.getElementById('filePreview').innerHTML = '';
 
-                        let sidebarItem = $('.userItem[data-id="' + data.receiver_id +
-                            '"]');
+
+                        let sidebarItem = $('.userItem[data-id="' + data.receiver_id + '"]');
 
                         if (sidebarItem.length) {
 
-                            // last message update
-                            sidebarItem.find('small').text(data.message);
+                            // last message
+                            let lastMsg = data.message;
+
+                            if (data.type === 'image') {
+                                lastMsg = "📷 Image";
+                            } else if (data.type === 'video') {
+                                lastMsg = "🎥 Video";
+                            } else if (data.type === 'file') {
+                                lastMsg = "📎 File";
+                            }
+
+                            sidebarItem.find('small').text(lastMsg);
 
                             // time update
                             sidebarItem.find('.text-muted').text('Now');
@@ -364,10 +432,14 @@
 
     <script>
         let myProfileImg = "{{ auth()->user()->profile_img }}";
-        $(document).on('click', '.message-bubble', function() {
+        $(document).on('click', '.message-bubble', function(e) {
+            if ($(e.target).is('img')) return;
+            if ($(e.target).is('a')) return;
 
             let msgId = $(this).closest('.message-item').data('id');
 
+            let isMe = $(this).closest('.message-item').hasClass('align-items-end');
+            if (!isMe) return;
             if (!confirm("Delete this message?")) return;
 
             fetch('/delete-message/' + msgId, {
@@ -384,29 +456,27 @@
                     }
                 });
         });
-    </script>
+
+        $(document).on('click', '.message-bubble a', function(e) {
+            e.stopPropagation();
+        });
+
+        $(document).on('click', '.message-bubble img', function(e) {
+            e.stopPropagation();
+
+            let src = $(this).attr('src');
+            $('#modalImage').attr('src', src);
+            $('#imageModal').css('display', 'flex');
+        });
 
 
+        $(document).on('click', '#closeModal', function(e) {
+            e.stopPropagation();
+            $('#imageModal').hide();
+        });
 
-    {{-- for clicking the user list and open the dashboard for chat --}}
-    <script>
-        $(document).ready(function() {
-
-            $('.userItem').on('click', function(e) {
-                e.preventDefault();
-
-                let userId = $(this).data('id');
-                let name = $(this).data('name');
-                let img = $(this).data('img');
-
-                document.getElementById('receiver_id').value = userId;
-
-                $('.chat-header .header-name').text(name);
-                $('.chat-header .header-avatar').attr('src', img);
-
-                console.log("Selected User ID:", userId);
-
-            });
+        $('#imageModal').on('click', function() {
+            $(this).hide();
         });
     </script>
 
@@ -418,6 +488,108 @@
         }
     </script>
 
+    <script>
+        function loadMessages(id, page, prepend = false) {
+
+            if (loading || !hasMore) return;
+
+            loading = true;
+            $('#chatLoader').show();
+
+
+
+            fetch(`/get-messages/${id}?page=${page}`)
+                .then(res => res.json())
+                .then(res => {
+
+                    hasMore = res.has_more;
+
+                    res.data.forEach(msg => {
+                        let isMe = msg.sender_id == {{ auth()->id() }};
+                        let content = '';
+
+                        if (msg.message) {
+                            content += `<div>${cleanMessage(msg.message)}</div>`;
+                        }
+
+                        if (msg.type === 'image') {
+                            content += `<img src="/storage/${msg.file}" width="150">`;
+                        }
+
+                        if (msg.type === 'video') {
+                            content += `
+                        <video width="200" controls>
+                            <source src="/storage/${msg.file}">
+                        </video>
+                    `;
+                        }
+
+                        if (msg.type === 'file') {
+                            content += `<a href="/storage/${msg.file}" target="_blank">Download File</a>`;
+                        }
+
+                        let html = isMe ? `
+                    <div id="msg-${msg.id}" class="d-flex flex-column align-items-end mb-2 message-item" data-id="${msg.id}">
+                        <div class="d-flex justify-content-end w-100">
+                            <div class="d-flex align-items-center" style="max-width: 65%;">
+                                ${
+                                    msg.deleted_at
+                                    ? `<div class="deleted-msg">You deleted this message</div>`
+                                    : `<div class="p-2 bg-success text-white rounded message-bubble">${content}</div>`
+                                }
+                                <img src="/storage/${msg.sender.profile_img}" class="chat-img ms-2">
+                            </div>
+                        </div>
+                        <div class="text-end small">${msg.created_at} ${getTicks(msg)}</div>
+                    </div>
+                ` : `
+                    <div id="msg-${msg.id}" class="d-flex flex-column align-items-start mb-2 message-item">
+                        <div class="d-flex align-items-center" style="max-width: 55%;">
+                            <img src="/storage/${msg.sender.profile_img}" class="chat-img me-2">
+                            ${
+                                msg.deleted_at
+                                ? `<div class="deleted-msg">This message was deleted by sender</div>`
+                                : `<div class="p-2 bg-light rounded message-bubble">${content}</div>`
+                            }
+                        </div>
+                        <small class="text-muted ms-5">${msg.created_at}</small>
+                    </div>
+                `;
+
+                        if (prepend) {
+                            $('#chatBox').prepend(html);
+                        } else {
+                            $('#chatBox').append(html);
+                        }
+                    });
+
+                    loading = false;
+                    $('#chatLoader').hide();
+                });
+        }
+    </script>
+
+    <script>
+        $('#chatBox').on('scroll', function() {
+
+            receiverId = $('#receiver_id').val();
+            if (!receiverId) return;
+
+            if ($(this).scrollTop() <= 5 && hasMore && !loading) {
+
+                page++;
+
+                let prevHeight = $('#chatBox')[0].scrollHeight;
+
+                loadMessages(receiverId, page, true);
+
+                setTimeout(() => {
+                    let newHeight = $('#chatBox')[0].scrollHeight;
+                    $('#chatBox').scrollTop(newHeight - prevHeight);
+                }, 200);
+            }
+        });
+    </script>
     <script>
         $(document).ready(function() {
 
@@ -431,7 +603,9 @@
                 let userId = $(this).data('id');
                 let name = $(this).data('name');
                 let img = $(this).data('img');
-
+                page = 1;
+                hasMore = true;
+                receiverId = userId;
                 $('#receiver_id').val(userId);
 
                 $('.chat-header .header-name').text(name);
@@ -453,14 +627,35 @@
                 // load messages
                 fetch('/get-messages/' + userId)
                     .then(res => res.json())
-                    .then(data => {
+                    .then(res => {
 
-                        data.forEach(msg => {
+                        res.data.forEach(msg => {
 
                             let isMe = msg.sender_id == myId;
 
                             let time = msg.created_at;
+                            let content = '';
 
+                            if (msg.message) {
+                                content += `<div>${cleanMessage(msg.message)}</div>`;
+                            }
+
+                            if (msg.type === 'image') {
+                                content += `<img src="/storage/${msg.file}" width="150">`;
+                            }
+
+                            if (msg.type === 'video') {
+                                content += `
+        <video width="200" controls>
+            <source src="/storage/${msg.file}">
+        </video>
+    `;
+                            }
+
+                            if (msg.type === 'file') {
+                                content +=
+                                    `<a href="/storage/${msg.file}" target="_blank">Download File</a>`;
+                            }
                             let html = isMe ? `
                                 <div id="msg-${msg.id}" class="d-flex flex-column align-items-end mb-2 message-item" data-id="${msg.id}">
                                 <div class="d-flex justify-content-end w-100">
@@ -469,7 +664,7 @@
                              ${
                                 msg.deleted_at
                                 ? `<div class="deleted-msg">You deleted this message</div>`
-                                : `<div class="p-2 bg-success text-white rounded message-bubble border">${msg.message}</div>`
+                                : `<div class="p-2 bg-success text-white rounded message-bubble border">${content}</div>`
                                 }
 
                             <img src="/storage/${msg.sender.profile_img}" class="chat-img ms-2"></div>
@@ -484,12 +679,13 @@
                             ${
                                 msg.deleted_at
                                 ? `<div class="deleted-msg">This message was deleted by sender</div>`
-                                : `<div class="p-2 bg-light rounded message-bubble" style="pointer-events: none;">${msg.message}</div>`
+                                : `<div class="p-2 bg-light rounded message-bubble" ">${content}</div>`
                             }
                             </div>
                             <small class="text-muted ms-5">${msg.created_at}</small></div>`;
 
                             $('#chatBox').append(html);
+                            loadMessages(receiverId, page, false);
 
                             $('#chatBox').scrollTop($('#chatBox')[0].scrollHeight);
 
@@ -599,13 +795,13 @@
                         // agar chat open hai
                         if (parseInt($('#receiver_id').val()) === parseInt(senderId)) {
 
-                        // mark read
-                        fetch('/mark-as-read/' + senderId, {
+                            // mark read
+                            fetch('/mark-as-read/' + senderId, {
                                 method: 'POST',
                                 headers: {
                                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
                                 }
-                        });
+                            });
 
                         }
 
@@ -616,7 +812,13 @@
                             if ($('#receiver_id').val() != e.sender_id) {
 
                                 // last message update
-                                sidebarItem.find('small').text(e.message);
+                                let lastMsg = e.message;
+
+                                if (e.type === 'image') lastMsg = "📷 Image";
+                                else if (e.type === 'video') lastMsg = "🎥 Video";
+                                else if (e.type === 'file') lastMsg = "📎 File";
+
+                                sidebarItem.find('small').text(lastMsg);
 
                                 //  time update (simple)
                                 sidebarItem.find('.text-muted').text('Now');
@@ -639,8 +841,7 @@
                                             <span class="badge rounded-pill bg-danger ms-2 px-3 py-1
                                             d-inline-flex align-items-center justify-content-center gap-1 shadow-sm badge-animate">
                                             <i class="bi bi-chat-dots-fill" style="font-size:16px;"></i>
-                                            <span class="count fw-bold">1</span></span>`
-                                    );
+                                            <span class="count fw-bold">1</span></span>`);
                                 }
                             }
                         }
@@ -654,13 +855,38 @@
                                 }
                             });
 
+                            let content = '';
+
+                            // TEXT
+                            if (e.message) {
+                                content += `<div>${cleanMessage(e.message)}</div>`;
+                            }
+
+                            // IMAGE
+                            if (e.type === 'image') {
+                                content += `<img src="/storage/${e.file}" width="150">`;
+                            }
+
+                            // FILE
+                            if (e.type === 'file') {
+                                content += `<a href="/storage/${e.file}" target="_blank">Download File</a>`;
+                            }
+                            //video
+                            if (e.type === 'video') {
+                                content += `
+        <video width="200" controls>
+            <source src="/storage/${e.file}">
+        </video>
+    `;
+                            }
+
                             let html = `
                               <div id="msg-${e.id}" class="d-flex flex-column align-items-start mb-2 message-item">
                                 <div class="d-flex align-items-center">
                                 <img src="/storage/${e.sender.profile_img || 'default.png'}" class="chat-img me-2">
                               <div class="p-2 bg-light rounded message-bubble"
-                                style="max-width:55%; pointer-events:none; word-break:break-word;">
-                            ${cleanMessage(e.message)}
+                                style="max-width:55%; word-break:break-word;">
+                            ${content}
                                 </div>
                                 </div>
                                 <small class="text-muted ms-5">${e.created_at || 'Now'}</small>
@@ -682,6 +908,35 @@
 
         });
     </script>
+
+    <!-- IMAGE PREVIEW MODAL -->
+    <div id="imageModal"
+        style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.9);
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+">
+
+        <span id="closeModal"
+            style="
+        position:absolute;
+        top:20px;
+        right:30px;
+        font-size:35px;
+        color:white;
+        cursor:pointer;
+        z-index:10000;
+    ">
+            &times;
+        </span>
+        <img id="modalImage" style="max-width:90%; max-height:90%; border-radius:10px;">
+    </div>
 
 </body>
 

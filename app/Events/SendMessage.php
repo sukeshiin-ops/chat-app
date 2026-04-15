@@ -52,7 +52,8 @@ class SendMessage implements ShouldBroadcastNow
             'created_at' => $this->message->created_at->format('h:i A'),
             'delivered_at' => $this->message->delivered_at,
             'read_at' => $this->message->read_at,
-            
+            'file' => $this->message->file,
+            'type' => $this->message->type,
             'sender' => [
                 'id' => $this->message->sender->id,
                 'name' => $this->message->sender->name,

@@ -8,15 +8,15 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 
 
 Broadcast::channel('chat-channel.{id}', function ($user, $id) {
-    if ((int) $user->id === (int) $id) {
+    if ((int) $user->id === (int) $id) {   // matching login user_id  with channel id 
         return [
             'id' => $user->id,
             'name' => $user->name,
         ];
     }
-
-      return false;
+    return false;
 });
+
 
 Broadcast::channel('online-users', function ($user) {
     return [
@@ -24,5 +24,3 @@ Broadcast::channel('online-users', function ($user) {
         'name' => $user->name,
     ];
 });
-
-

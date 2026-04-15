@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('chat_messages', function (Blueprint $table) {
             $table->id();
-            $table->text('message');
+            $table->text('message')->nullable();
             // $table->foreignId('sender_id');
             // $table->foreignId('receiver_id');
 

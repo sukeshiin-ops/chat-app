@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\MessageFetchRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\verifyOptRequest;
+use App\Http\Resources\LoginResource;
 use App\Models\Message;
 use App\Models\Opt;
 use App\Models\Otp;
@@ -65,7 +66,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'true',
                 'message' => "User Login Successfully!!",
-                'user' => $user,
+                'user' => new LoginResource($user), // this file located in Resource/LoginResource.php
                 'token' => $token
             ]);
         }
@@ -213,53 +214,114 @@ class AuthController extends Controller
         }
     }
 
-    public function getUserList()
-    {
-        $user = User::get();
 
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => "User data fails to fetch!!",
-            ]);
-        }
+    public function getUserList(Request $request)
+    {
+        $activeUser = $request->user();
+
+        $users = User::where('id', '!=', $activeUser->id)
+            ->get()
+            ->map(function ($user) use ($activeUser) {
+
+                $lastMessage = Message::withTrashed()
+                    ->where(function ($q) use ($user, $activeUser) {
+                        $q->where('sender_id', $activeUser->id)
+                            ->where('receiver_id', $user->id);
+                    })
+                    ->orWhere(function ($q) use ($user, $activeUser) {
+                        $q->where('sender_id', $user->id)
+                            ->where('receiver_id', $activeUser->id);
+                    })
+                    ->latest()
+                    ->first();
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'profile_img' => $user->profile_img,
+
+                    'last_message' => $lastMessage
+                        ? ($lastMessage->deleted_at
+                            ? 'This message was deleted'
+                            : $lastMessage->message)
+                        : null,
+
+                    'last_time' => $lastMessage?->created_at?->format('Y-m-d H:i:s'),
+
+                    'unread_count' => Message::where('sender_id', $user->id)
+                        ->where('receiver_id', $activeUser->id)
+                        ->whereNull('read_at')
+                        ->count(),
+                ];
+            })
+            ->sortByDesc('last_time')
+            ->values();
 
         return response()->json([
             'status' => true,
-            'all-user' => $user ? $user : "No User Found!!",
-            'message' => "User verify Successfully!!",
+            'message' => 'User list fetched successfully',
+            'data' => $users,
         ]);
     }
-
-
-    public function messageFetch(MessageFetchRequest $request)
+    public function messageFetch(Request $request)
     {
-        $data = $request->validated();
+        $request->validate([
+            'receiver_id' => 'required|exists:users,id',
+            'page' => 'nullable|integer|min:1'
+        ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $authId = Auth::id();
+        $receiverId = $request->receiver_id;
 
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => "User not found!!",
-            ]);
-        }
-
-        $userMessage = Message::where('sender_id', $user->id)
-            ->select('id', 'message', 'created_at')
-            ->get();
-
-        if ($userMessage->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => "No messages found!!",
-            ]);
-        }
+        $messages = Message::with(['sender:id,name,profile_img', 'receiver:id,name,profile_img'])
+            ->where(function ($q) use ($authId, $receiverId) {
+                $q->where('sender_id', $authId)
+                    ->where('receiver_id', $receiverId);
+            })
+            ->orWhere(function ($q) use ($authId, $receiverId) {
+                $q->where('sender_id', $receiverId)
+                    ->where('receiver_id', $authId);
+            })
+            ->orderBy('created_at', 'desc')   // IMPORTANT: latest first for pagination
+            ->paginate(20);                   //  PAGINATION ADDED
 
         return response()->json([
             'status' => true,
-            'data' => $userMessage,
-            'message' => "User Message Fetch Successfully!!",
+            'message' => "Messages fetched successfully",
+            'data' => collect($messages->items())->map(function ($msg) use ($authId) {
+                return [
+                    'id' => $msg->id,
+                    'message' => $msg->message,
+                    'sender_id' => $msg->sender_id,
+                    'receiver_id' => $msg->receiver_id,
+
+                    'is_seen' => !is_null($msg->read_at),
+                    'is_delivered' => !is_null($msg->delivered_at),
+                    'is_deleted' => !is_null($msg->deleted_at),
+
+                    'read_at' => $msg->read_at,
+                    'delivered_at' => $msg->delivered_at,
+
+                    'file_url' => $msg->file ? asset('storage/' . $msg->file) : null,
+                    'file_name' => $msg->file ? basename($msg->file) : null,
+
+                    'created_at' => $msg->created_at->format('h:i A'),
+
+                    'is_me' => $msg->sender_id == $authId,
+
+                    'sender' => $msg->sender,
+                    'receiver' => $msg->receiver,
+                ];
+            }),
+
+
+            'pagination' => [
+                'current_page' => $messages->currentPage(),
+                'last_page' => $messages->lastPage(),
+                'per_page' => $messages->perPage(),
+                'total' => $messages->total(),
+                'has_more' => $messages->hasMorePages(),
+            ]
         ]);
     }
 }
